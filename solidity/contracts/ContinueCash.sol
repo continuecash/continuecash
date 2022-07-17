@@ -167,7 +167,16 @@ contract ContinueCashFactory {
 
 	event Created(address indexed stock, address indexed money, address pairAddr);
 
-	function create(address stock, address money, address impl) external {
+	function getAddress(address stock, address money, address impl) public view returns (address) {
+		bytes memory bytecode = type(ContinueCashProxy).creationCode;
+		(uint stock_priceDiv, uint money_priceMul) = getParams(stock, money);
+		bytes32 codeHash = keccak256(abi.encodePacked(bytecode, abi.encode(
+			stock_priceDiv, money_priceMul, impl)));
+		bytes32 hash = keccak256(abi.encodePacked(bytes1(0xff), address(this), bytes32(0), codeHash));
+		return address(uint160(uint(hash)));
+	}
+
+	function getParams(address stock, address money) private returns (uint stock_priceDiv, uint money_priceMul) {
 		uint stockDecimals = stock == SEP206Contract ? 18 : IERC20Metadata(stock).decimals();
 		uint moneyDecimals = money == SEP206Contract ? 18 : IERC20Metadata(money).decimals();
 		uint priceMul = 1;
@@ -177,9 +186,12 @@ contract ContinueCashFactory {
 		} else {
 			priceDiv = (10**(stockDecimals - moneyDecimals));
 		}
-		uint stock_priceDiv = (uint(uint160(stock))<<96)|priceDiv;
-		uint money_priceMul = (uint(uint160(money))<<96)|priceMul;
+		stock_priceDiv = (uint(uint160(stock))<<96)|priceDiv;
+		money_priceMul = (uint(uint160(money))<<96)|priceMul;
+	}
 
+	function create(address stock, address money, address impl) external {
+		(uint stock_priceDiv, uint money_priceMul) = getParams(stock, money);
 		address pairAddr = address(new ContinueCashProxy{salt: 0}(stock_priceDiv, money_priceMul, impl));
 		emit Created(stock, money, pairAddr);
 	}
