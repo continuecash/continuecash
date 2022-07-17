@@ -12,14 +12,14 @@ contract ContinueCashLogic {
 	uint[] private robotIdList;
 	mapping(uint => uint) public robotInfoMap;
 
-	address constant SEP206Contract = address(bytes20(uint160(0x2711)));
+	address constant SEP206Contract = address(uint160(0x2711));
 
-	function getAllRobots() view public returns (uint[] memory robots) {
-		robots = new uint[](robotIdList.length);
+	function getAllRobots() view public returns (uint[] memory robotsIdAndInfo) {
+		robotsIdAndInfo = new uint[](robotIdList.length);
 		for(uint i=0; i<robotIdList.length; i++) {
 			uint robotId = robotIdList[i];
-			robots[2*i] = robotId;
-			robots[2*i+1] = robotInfoMap[robotId];
+			robotsIdAndInfo[2*i] = robotId;
+			robotsIdAndInfo[2*i+1] = robotInfoMap[robotId];
 		}
 	}
 
@@ -79,7 +79,7 @@ contract ContinueCashLogic {
 		bool bchExclusive = stock != SEP206Contract && money != SEP206Contract;
 		stockAmount = safeReceive(stock, stockAmount, bchExclusive);
 		moneyAmount = safeReceive(money, moneyAmount, bchExclusive);
-		uint robotId = uint(uint160(msg.sender))+createdRobotCount;
+		uint robotId = (uint(uint160(msg.sender))<<96)+createdRobotCount;
 		createdRobotCount += 1;
 		robotIdList.push(robotId);
 		robotInfoMap[robotId] = packRobotInfo(stockAmount, moneyAmount, packedPrice);
@@ -113,6 +113,7 @@ contract ContinueCashLogic {
 		safeTransfer(money, msg.sender, moneyDelta);
 		stockAmount += stockDelta;
 		moneyAmount -= moneyDelta;
+		robotInfoMap[robotId] = packRobotInfo(stockAmount, moneyAmount, packedPrice);
 	}
 
 	function buyFromRobot(uint robotId, uint moneyDelta) external payable {
@@ -127,6 +128,7 @@ contract ContinueCashLogic {
 		safeTransfer(stock, msg.sender, stockDelta);
 		stockAmount -= stockDelta;
 		moneyAmount += moneyDelta;
+		robotInfoMap[robotId] = packRobotInfo(stockAmount, moneyAmount, packedPrice);
 	}
 }
 
@@ -138,14 +140,14 @@ contract ContinueCashProxy {
 	constructor(uint _stock_priceDiv, uint _money_priceMul, address _impl) {
 		stock_priceDiv = _stock_priceDiv;
 		money_priceMul = _money_priceMul;
-		implAddr = uint(uint160(bytes20(_impl)));
+		implAddr = uint(uint160(_impl));
 	}
 	
 	receive() external payable {
 		require(false);
 	}
 
-	fallback() payable external {
+	fallback() external payable {
 		uint impl=implAddr;
 		assembly {
 			let ptr := mload(0x40)
@@ -161,7 +163,7 @@ contract ContinueCashProxy {
 }
 
 contract ContinueCashFactory {
-	address constant SEP206Contract = address(bytes20(uint160(0x2711)));
+	address constant SEP206Contract = address(uint160(0x2711));
 
 	event Created(address indexed stock, address indexed money, address pairAddr);
 
