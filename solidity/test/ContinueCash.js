@@ -332,8 +332,21 @@ async function loadAllRobots(proxy) {
 }
 
 function packPrice(price) {
-  return price; // TODO
+	var effBits = 1
+	while(!price.mask(effBits).eq(price)) {
+		effBits += 1
+	}
+	var twoPow24 = ethers.BigNumber.from(2).pow(24)
+	if(effBits <= 25) {
+		return price
+	}
+	var shift = effBits-25
+	var shiftBN = ethers.BigNumber.from(2).pow(shift)
+	var low24 = price.div(shiftBN).sub(twoPow24)
+	var high8 = ethers.BigNumber.from(shift).add(1).mul(twoPow24)
+	return high8.add(low24)
 }
+
 function unpackPrice(packed) {
 	var twoPow24 = ethers.BigNumber.from(2).pow(24)
 	var low24 = packed.mod(twoPow24)
