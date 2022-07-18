@@ -20,7 +20,7 @@ describe("ContinueCash", function () {
 
     const ERC20ForTest = await ethers.getContractFactory("ERC20ForTest");
     const wBCH = await ERC20ForTest.deploy("wBCH", ethers.utils.parseUnits('10000000', 18), 18);
-    const fUSD = await ERC20ForTest.deploy("fUSD", ethers.utils.parseUnits('10000000', 15), 15);
+    const fUSD = await ERC20ForTest.deploy("fUSD", ethers.utils.parseUnits('10000000',  8),  8);
     const gUSD = await ERC20ForTest.deploy("gUSD", ethers.utils.parseUnits('10000000', 18), 18);
     const hUSD = await ERC20ForTest.deploy("hUSD", ethers.utils.parseUnits('10000000', 20), 20);
     // console.log('wBCH addr:', wBCH.address);
@@ -51,7 +51,7 @@ describe("ContinueCash", function () {
       const { Logic, logic, factory, wBCH, fUSD, gUSD, hUSD } = await loadFixture(deployFixture);
 
       [
-        [fUSD.address, ethers.BigNumber.from(1000), ethers.BigNumber.from(  1)],
+        [fUSD.address, ethers.BigNumber.from(1e10), ethers.BigNumber.from(  1)],
         [gUSD.address, ethers.BigNumber.from(   1), ethers.BigNumber.from(  1)],
         [hUSD.address, ethers.BigNumber.from(   1), ethers.BigNumber.from(100)],
       ].forEach(async (params) => {
@@ -66,7 +66,7 @@ describe("ContinueCash", function () {
 
   });
 
-  describe("ContinueCashLogic: createRobot", function () {
+  describe("ContinueCashLogic: create/deleteRobot", function () {
 
     let owner, acc1;
     let wBCH, fUSD;
@@ -195,9 +195,113 @@ describe("ContinueCash", function () {
       ]);
     });
 
-    // it("sellTo/buyFromRobot", async function () {
-    //   // TODO
-    // });
+  });
+
+  describe("ContinueCashLogic: sellTo/buyFromRobot", function () {
+    let owner, taker;
+    let wBCH, fUSD;
+    let proxy;
+    let robotId0, robotId1;
+
+    beforeEach(async function () {
+      [owner, taker] = await ethers.getSigners();
+
+      const fixture = await loadFixture(deployFixture);
+      let {Logic, logic, factory } = fixture;
+      [wBCH, fUSD] = [fixture.wBCH, fixture.fUSD];
+
+      await factory.create(wBCH.address, fUSD.address, logic.address);
+      const proxyAddr = await factory.getAddress(wBCH.address, fUSD.address, logic.address);
+      proxy = await Logic.attach(proxyAddr);
+
+      await wBCH.approve(proxy.address, 99999n * 10n**18n);
+      await fUSD.approve(proxy.address, 99999n * 10n**8n);
+
+      robotId0 = encodeRobotId(owner.address, 0);
+      robotId1 = encodeRobotId(owner.address, 1);
+
+      const robotInfo0 = packRobotInfo(
+        100n * 10n**18n,
+        500n * 10n**8n,
+        150n, 
+        100n,
+      );
+      await proxy.createRobot(robotInfo0);
+
+      await wBCH.transfer(taker.address, 200n * 10n**18n);
+      await fUSD.transfer(taker.address, 20000n * 10n**8n);
+
+      expect(await wBCH.balanceOf(proxy.address)).to.be.equal(100n * 10n**18n);
+      expect(await fUSD.balanceOf(proxy.address)).to.be.equal(500n * 10n**8n);
+      expect(await wBCH.balanceOf(taker.address)).to.be.equal(200n * 10n**18n);
+      expect(await fUSD.balanceOf(taker.address)).to.be.equal(20000n * 10n**8n);
+    });
+
+    it("sellToRobot: no-approve", async function () {
+      await expect(proxy.connect(taker).sellToRobot(robotId0, 123))
+        .to.be.revertedWith("ERC20: insufficient allowance");
+    });
+    it("buyFromRobot: no-approve", async function () {
+      await expect(proxy.connect(taker).buyFromRobot(robotId0, 123))
+        .to.be.revertedWith("ERC20: insufficient allowance");
+    });
+
+    it("sellToRobot: robot-not-found", async function () {
+      await wBCH.connect(taker).approve(proxy.address, 99999n * 10n**18n);
+      await expect(proxy.connect(taker).sellToRobot(robotId1, 123))
+        .to.be.revertedWith("robot-not-found");
+    });
+    it("buyFromRobot: robot-not-found", async function () {
+      await fUSD.connect(taker).approve(proxy.address, 99999n * 10n**8n);
+      await expect(proxy.connect(taker).buyFromRobot(robotId1, 123))
+        .to.be.revertedWith("robot-not-found");
+    });
+
+    it("sellToRobot: not-enough-money", async function () {
+      await wBCH.connect(taker).approve(proxy.address, 99999n * 10n**18n);
+      await expect(proxy.connect(taker).sellToRobot(robotId0, 100n * 10n**18n))
+        .to.be.revertedWith("not-enough-money");
+    });
+    it("buyFromRobot: not-enough-stock", async function () {
+      await fUSD.connect(taker).approve(proxy.address, 99999n * 10n**8n);
+      await expect(proxy.connect(taker).buyFromRobot(robotId0, 20000n * 10n**8n))
+        .to.be.revertedWith("not-enough-stock");
+    });
+
+    it("sellToRobot: ok", async function () {
+      await wBCH.connect(taker).approve(proxy.address, 99999n * 10n**18n);
+      await proxy.connect(taker).sellToRobot(robotId0, 1n * 10n**18n);
+
+      const newRobotInfo0 = packRobotInfo(
+        101n * 10n**18n,
+        400n * 10n**8n,
+        150n, 
+        100n,
+      );
+      expect(await proxy.robotInfoMap(robotId0)).to.be.equal(newRobotInfo0);
+
+      expect(await wBCH.balanceOf(proxy.address)).to.be.equal(101n * 10n**18n);
+      expect(await fUSD.balanceOf(proxy.address)).to.be.equal(400n * 10n**8n);
+      expect(await wBCH.balanceOf(taker.address)).to.be.equal(199n * 10n**18n);
+      expect(await fUSD.balanceOf(taker.address)).to.be.equal(20100n * 10n**8n);
+    });
+    it("buyFromRobot: ok", async function () {
+      await fUSD.connect(taker).approve(proxy.address, 99999n * 10n**8n);
+      await proxy.connect(taker).buyFromRobot(robotId0, 300n * 10n**8n);
+
+      const newRobotInfo0 = packRobotInfo(
+         98n * 10n**18n,
+        800n * 10n**8n,
+        150n, 
+        100n,
+      );
+      expect(await proxy.robotInfoMap(robotId0)).to.be.equal(newRobotInfo0);
+
+      expect(await wBCH.balanceOf(proxy.address)).to.be.equal(98n * 10n**18n);
+      expect(await fUSD.balanceOf(proxy.address)).to.be.equal(800n * 10n**8n);
+      expect(await wBCH.balanceOf(taker.address)).to.be.equal(202n * 10n**18n);
+      expect(await fUSD.balanceOf(taker.address)).to.be.equal(19700n * 10n**8n);
+    });
 
   });
 
@@ -256,4 +360,4 @@ function testPackPrice() {
 	test(ethers.BigNumber.from("0x1234567890ABCDEF1234567890ABCDEF"))
 }
 
-testPackPrice()
+// testPackPrice()
