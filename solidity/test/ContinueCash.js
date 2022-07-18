@@ -207,10 +207,7 @@ describe("ContinueCash", function () {
 function packRobotInfo(stockAmount, moneyAmount, highPrice, lowPrice) {
   return (stockAmount << 160n)
        | (moneyAmount <<  64n)
-       | packPrice(highPrice, lowPrice);
-}
-function packPrice(high, low) {
-  return high << 32n | low;
+       | packPrice(highPrice) << 32n | packPrice(lowPrice);
 }
 function encodeRobotId(addr, createdRobotCount) {
   return (BigInt(addr) << 96n) + BigInt(createdRobotCount);
@@ -230,6 +227,9 @@ async function loadAllRobots(proxy) {
   return robots;
 }
 
+function packPrice(price) {
+  return price; // TODO
+}
 function unpackPrice(packed) {
 	var twoPow24 = ethers.BigNumber.from(2).pow(24)
 	var low24 = packed.mod(twoPow24)
