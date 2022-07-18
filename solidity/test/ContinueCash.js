@@ -229,3 +229,31 @@ async function loadAllRobots(proxy) {
 
   return robots;
 }
+
+function unpackPrice(packed) {
+	var twoPow24 = ethers.BigNumber.from(2).pow(24)
+	var low24 = packed.mod(twoPow24)
+	var shift = packed.div(twoPow24)
+	if(shift.isZero()) {
+		return low24
+	}
+	var shiftBN = ethers.BigNumber.from(2).pow(shift.sub(1))
+	return low24.add(twoPow24).mul(shiftBN)
+}
+
+function testPackPrice() {
+	function test(origin) {
+		console.log("origin", origin.toHexString())
+		console.log("packed", packPrice(origin).toHexString())
+		console.log("unpack", unpackPrice(packPrice(origin)).toHexString())
+	}
+
+	test(ethers.BigNumber.from("0xF"))
+	test(ethers.BigNumber.from("0xF00123"))
+	test(ethers.BigNumber.from("0x1F00123"))
+	test(ethers.BigNumber.from("0x10101010101010101"))
+	test(ethers.BigNumber.from("0x1234567890ABCDEF"))
+	test(ethers.BigNumber.from("0x1234567890ABCDEF1234567890ABCDEF"))
+}
+
+testPackPrice()

@@ -13,7 +13,8 @@ contract ContinueCashLogic {
 	uint[] private robotIdList;
 	mapping(uint => uint) public robotInfoMap;
 
-	address constant SEP206Contract = address(uint160(0x2711));
+	address constant private SEP206Contract = address(uint160(0x2711));
+	uint constant private UNIT = 10**18;
 
 	function getAllRobots() view public returns (uint[] memory robotsIdAndInfo) {
 		robotsIdAndInfo = new uint[](robotIdList.length * 2);
@@ -42,8 +43,13 @@ contract ContinueCashLogic {
 	}
 
 	function unpackPrice(uint packed) pure private returns (uint) {
-		uint mask = (1<<25);
-		return ((packed&(mask-1))|mask)<<(packed>>24);
+		uint twoPow24 = (1<<24);
+		uint low24 = (packed&(twoPow24-1));
+		uint shift = (packed>>24);
+		if(shift == 0) {
+			return low24
+		}
+		return (low24|twoPow24)<<(shift-1);
 	}
 
 	function safeTransfer(address coinType, address receiver, uint amount) internal {
@@ -109,7 +115,7 @@ contract ContinueCashLogic {
 		uint lowPrice = unpackPrice(uint32(packedPrice));
 		(address stock, address money, uint priceDiv, uint priceMul) = loadParams();
 		stockDelta = safeReceive(stock, stockDelta, stock != SEP206Contract);
-		uint moneyDelta = lowPrice * priceMul * stockDelta / priceDiv;
+		uint moneyDelta = lowPrice * priceMul * stockDelta / (priceDiv * Unit);
 		require(moneyAmount > moneyDelta, "not-enough-money");
 		safeTransfer(money, msg.sender, moneyDelta);
 		stockAmount += stockDelta;
@@ -124,7 +130,7 @@ contract ContinueCashLogic {
 		uint highPrice = unpackPrice(packedPrice>>32);
 		(address stock, address money, uint priceDiv, uint priceMul) = loadParams();
 		moneyDelta = safeReceive(money, moneyDelta, money != SEP206Contract);
-		uint stockDelta = moneyDelta * priceDiv / (highPrice * priceMul);
+		uint stockDelta = moneyDelta * priceDiv * UNIT / (highPrice * priceMul);
 		require(stockAmount > stockDelta, "not-enough-stock");
 		safeTransfer(stock, msg.sender, stockDelta);
 		stockAmount -= stockDelta;
