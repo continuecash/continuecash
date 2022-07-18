@@ -3,3 +3,4 @@
 *.sol~
 *.sol~
 *.swp
+.DS_Store
