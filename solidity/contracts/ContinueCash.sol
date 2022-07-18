@@ -47,7 +47,7 @@ contract ContinueCashLogic {
 		uint low24 = (packed&(twoPow24-1));
 		uint shift = (packed>>24);
 		if(shift == 0) {
-			return low24
+			return low24;
 		}
 		return (low24|twoPow24)<<(shift-1);
 	}
@@ -115,7 +115,7 @@ contract ContinueCashLogic {
 		uint lowPrice = unpackPrice(uint32(packedPrice));
 		(address stock, address money, uint priceDiv, uint priceMul) = loadParams();
 		stockDelta = safeReceive(stock, stockDelta, stock != SEP206Contract);
-		uint moneyDelta = lowPrice * priceMul * stockDelta / (priceDiv * Unit);
+		uint moneyDelta = lowPrice * priceMul * stockDelta / (priceDiv * UNIT);
 		require(moneyAmount > moneyDelta, "not-enough-money");
 		safeTransfer(money, msg.sender, moneyDelta);
 		stockAmount += stockDelta;
