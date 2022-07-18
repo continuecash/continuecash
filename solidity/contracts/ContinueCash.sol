@@ -107,7 +107,7 @@ contract ContinueCashLogic {
 		(uint stockAmount, uint moneyAmount, uint packedPrice) = unpackRobotInfo(robotInfo);
 		uint lowPrice = unpackPrice(uint32(packedPrice));
 		(address stock, address money, uint priceDiv, uint priceMul) = loadParams();
-		stockDelta = safeReceive(stock, stockAmount, stock != SEP206Contract);
+		stockDelta = safeReceive(stock, stockDelta, stock != SEP206Contract);
 		uint moneyDelta = lowPrice * priceMul * stockDelta / priceDiv;
 		require(moneyAmount > moneyDelta, "not-enough-money");
 		safeTransfer(money, msg.sender, moneyDelta);
@@ -122,7 +122,7 @@ contract ContinueCashLogic {
 		(uint stockAmount, uint moneyAmount, uint packedPrice) = unpackRobotInfo(robotInfo);
 		uint highPrice = unpackPrice(packedPrice>>32);
 		(address stock, address money, uint priceDiv, uint priceMul) = loadParams();
-		moneyDelta = safeReceive(money, moneyAmount, money != SEP206Contract);
+		moneyDelta = safeReceive(money, moneyDelta, money != SEP206Contract);
 		uint stockDelta = moneyDelta * priceDiv / (highPrice * priceMul);
 		require(stockAmount > stockDelta, "not-enough-stock");
 		safeTransfer(stock, msg.sender, stockDelta);
