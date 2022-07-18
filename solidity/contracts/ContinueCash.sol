@@ -3,6 +3,7 @@ pragma solidity 0.8.15;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+// import "hardhat/console.sol";
 
 contract ContinueCashLogic {
 	uint public stock_priceDiv;
@@ -176,7 +177,7 @@ contract ContinueCashFactory {
 		return address(uint160(uint(hash)));
 	}
 
-	function getParams(address stock, address money) private returns (uint stock_priceDiv, uint money_priceMul) {
+	function getParams(address stock, address money) private view returns (uint stock_priceDiv, uint money_priceMul) {
 		uint stockDecimals = stock == SEP206Contract ? 18 : IERC20Metadata(stock).decimals();
 		uint moneyDecimals = money == SEP206Contract ? 18 : IERC20Metadata(money).decimals();
 		uint priceMul = 1;
