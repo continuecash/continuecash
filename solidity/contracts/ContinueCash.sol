@@ -16,7 +16,7 @@ contract ContinueCashLogic {
 	address constant SEP206Contract = address(uint160(0x2711));
 
 	function getAllRobots() view public returns (uint[] memory robotsIdAndInfo) {
-		robotsIdAndInfo = new uint[](robotIdList.length);
+		robotsIdAndInfo = new uint[](robotIdList.length * 2);
 		for(uint i=0; i<robotIdList.length; i++) {
 			uint robotId = robotIdList[i];
 			robotsIdAndInfo[2*i] = robotId;
