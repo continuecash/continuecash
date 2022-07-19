@@ -82,7 +82,7 @@ contract ContinueCashLogic {
 	function createRobot(uint robotInfo) external payable {
 		(uint stockAmount, uint moneyAmount, uint packedPrice) = unpackRobotInfo(robotInfo);
 		require(uint32(packedPrice>>32) > uint32(packedPrice), "invalid-price");
-		(address stock, address money, uint priceDiv, uint priceMul) = loadParams();
+		(address stock, address money, /*uint priceDiv*/, /*uint priceMul*/) = loadParams();
 		bool bchExclusive = stock != SEP206Contract && money != SEP206Contract;
 		stockAmount = safeReceive(stock, stockAmount, bchExclusive);
 		moneyAmount = safeReceive(money, moneyAmount, bchExclusive);
@@ -101,7 +101,7 @@ contract ContinueCashLogic {
 		}
 		robotIdList.pop();
 		uint robotInfo = robotInfoMap[robotId];
-		(uint stockAmount, uint moneyAmount, uint packedPrice) = unpackRobotInfo(robotInfo);
+		(uint stockAmount, uint moneyAmount, /*uint packedPrice*/) = unpackRobotInfo(robotInfo);
 		address stock = address(uint160(stock_priceDiv>>96));
 		address money = address(uint160(money_priceMul>>96));
 		safeTransfer(stock, msg.sender, stockAmount);
