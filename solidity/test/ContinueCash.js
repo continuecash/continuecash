@@ -213,6 +213,8 @@ describe("ContinueCash", function () {
       await factory.create(wBCH.address, fUSD.address, logic.address);
       const proxyAddr = await factory.getAddress(wBCH.address, fUSD.address, logic.address);
       proxy = await Logic.attach(proxyAddr);
+      proxy.stockDec = 18; //wBCH;
+      proxy.moneyDec =  8; //fUSD;
 
       await wBCH.approve(proxy.address, 99999n * 10n**18n);
       await fUSD.approve(proxy.address, 99999n * 10n**8n);
@@ -223,8 +225,8 @@ describe("ContinueCash", function () {
       const robotInfo0 = packRobotInfo(
         100n * 10n**18n,
         500n * 10n**8n,
-        150n, 
-        100n,
+        '150.0', 
+        '100.0',
       );
       await proxy.createRobot(robotInfo0);
 
@@ -272,35 +274,32 @@ describe("ContinueCash", function () {
       await wBCH.connect(taker).approve(proxy.address, 99999n * 10n**18n);
       await proxy.connect(taker).sellToRobot(robotId0, 1n * 10n**18n);
 
-      const newRobotInfo0 = packRobotInfo(
-        101n * 10n**18n,
-        400n * 10n**8n,
-        150n, 
-        100n,
-      );
-      expect(await proxy.robotInfoMap(robotId0)).to.be.equal(newRobotInfo0);
+      expect(await getRobotById(proxy, robotId0)).to.deep.equal({
+        stockAmount: "101.0",
+        moneyAmount: "400.0000024",
+        highPrice: "149.9999942100385792",
+        lowPrice: "99.999997606041223168",
+      });
 
-      expect(await wBCH.balanceOf(proxy.address)).to.be.equal(101n * 10n**18n);
-      expect(await fUSD.balanceOf(proxy.address)).to.be.equal(400n * 10n**8n);
-      expect(await wBCH.balanceOf(taker.address)).to.be.equal(199n * 10n**18n);
-      expect(await fUSD.balanceOf(taker.address)).to.be.equal(20100n * 10n**8n);
+      expect(ethers.utils.formatUnits(await wBCH.balanceOf(proxy.address), 18)).to.be.equal("101.0");
+      expect(ethers.utils.formatUnits(await fUSD.balanceOf(proxy.address),  8)).to.be.equal("400.0000024");
+      expect(ethers.utils.formatUnits(await wBCH.balanceOf(taker.address), 18)).to.be.equal("199.0");
+      expect(ethers.utils.formatUnits(await fUSD.balanceOf(taker.address),  8)).to.be.equal("20099.9999976");
     });
     it("buyFromRobot: ok", async function () {
       await fUSD.connect(taker).approve(proxy.address, 99999n * 10n**8n);
       await proxy.connect(taker).buyFromRobot(robotId0, 300n * 10n**8n);
+      expect(await getRobotById(proxy, robotId0)).to.deep.equal({
+        stockAmount: "97.99999992280051141",
+        moneyAmount: "800.0",
+        highPrice: "149.9999942100385792",
+        lowPrice: "99.999997606041223168",
+      });
 
-      const newRobotInfo0 = packRobotInfo(
-         98n * 10n**18n,
-        800n * 10n**8n,
-        150n, 
-        100n,
-      );
-      expect(await proxy.robotInfoMap(robotId0)).to.be.equal(newRobotInfo0);
-
-      expect(await wBCH.balanceOf(proxy.address)).to.be.equal(98n * 10n**18n);
-      expect(await fUSD.balanceOf(proxy.address)).to.be.equal(800n * 10n**8n);
-      expect(await wBCH.balanceOf(taker.address)).to.be.equal(202n * 10n**18n);
-      expect(await fUSD.balanceOf(taker.address)).to.be.equal(19700n * 10n**8n);
+      expect(ethers.utils.formatUnits(await wBCH.balanceOf(proxy.address), 18)).to.be.equal("97.99999992280051141");
+      expect(ethers.utils.formatUnits(await fUSD.balanceOf(proxy.address),  8)).to.be.equal("800.0");
+      expect(ethers.utils.formatUnits(await wBCH.balanceOf(taker.address), 18)).to.be.equal("202.00000007719948859");
+      expect(ethers.utils.formatUnits(await fUSD.balanceOf(taker.address),  8)).to.be.equal("19700.0");
     });
 
   });
@@ -311,10 +310,21 @@ describe("ContinueCash", function () {
 function packRobotInfo(stockAmount, moneyAmount, highPrice, lowPrice) {
   return (stockAmount << 160n)
        | (moneyAmount <<  64n)
-       | packPrice(highPrice) << 32n | packPrice(lowPrice);
+       | packPriceX(highPrice) << 32n | packPriceX(lowPrice);
 }
 function encodeRobotId(addr, createdRobotCount) {
   return (BigInt(addr) << 96n) + BigInt(createdRobotCount);
+}
+
+async function getRobotById(proxy, robotId) {
+  const robotInfo = await proxy.robotInfoMap(robotId);
+  const robotInfoN = BigInt(robotInfo.toString());
+  return {
+    stockAmount: ethers.utils.formatUnits(robotInfoN >> 160n, proxy.stockDec),
+    moneyAmount: ethers.utils.formatUnits((robotInfoN >> 64n) & 0xFFFFFFFFFFFFFFFFFFFFFFFFn, proxy.moneyDec),
+    highPrice  : ethers.utils.formatUnits(unpackPriceN((robotInfoN >> 32n) & 0xFFFFFFFFn), 18),
+    lowPrice   : ethers.utils.formatUnits(unpackPriceN(robotInfoN & 0xFFFFFFFFn), 18),
+  };
 }
 
 async function loadAllRobots(proxy) {
@@ -329,6 +339,17 @@ async function loadAllRobots(proxy) {
   }
 
   return robots;
+}
+
+function packPriceX(price) {
+  switch (typeof price) {
+    case 'bigint': return BigInt(packPrice(ethers.BigNumber.from(price * 10n**18n)).toString());
+    case 'string': return BigInt(packPrice(ethers.utils.parseUnits(price, 18)).toString());
+    default: throw "invalid price: " + price;
+  }
+}
+function unpackPriceN(price) {
+  return unpackPrice(ethers.BigNumber.from(price));
 }
 
 function packPrice(price) {
@@ -373,4 +394,40 @@ function testPackPrice() {
 	test(ethers.BigNumber.from("0x1234567890ABCDEF1234567890ABCDEF"))
 }
 
+function testPackPrice2() {
+  [
+    "0.0000000001",
+    "0.0000000012",
+    "0.0000000123",
+    "0.0000001234",
+    "0.0000012345",
+    "0.000012345",
+    "0.000123456",
+    "0.001234567",
+    "0.012345678",
+    "0.123456789",
+    "1.234567890",
+    "12.34567890",
+    "123.4567890",
+    "1234.567890",
+    "12345.67890",
+    "123456.7890",
+    "1234567.890",
+    "12345678.90",
+    "123456789.0",
+    "1234567890.",
+    "12345678901",
+  ].forEach(x => {
+    const origin = ethers.utils.parseUnits(x);
+    const packed = packPrice(origin);
+    const unpacked = unpackPrice(packed);
+
+    console.log("origin:", ethers.utils.formatUnits(origin));
+    console.log("packed:", packed.toHexString());
+    console.log("unpack:", ethers.utils.formatUnits(unpacked));
+    console.log('-----')
+  });
+}
+
 // testPackPrice()
+// testPackPrice2();
