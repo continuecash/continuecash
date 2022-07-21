@@ -304,6 +304,82 @@ describe("ContinueCash", function () {
 
   });
 
+  describe("ContinueCashLogic: money has more decimals", function () {
+    let owner, taker;
+    let wBCH, hUSD;
+    let proxy;
+    let robotId0, robotId1;
+
+    beforeEach(async function () {
+      [owner, taker] = await ethers.getSigners();
+
+      const fixture = await loadFixture(deployFixture);
+      let {Logic, logic, factory } = fixture;
+      [wBCH, hUSD] = [fixture.wBCH, fixture.hUSD];
+
+      await factory.create(wBCH.address, hUSD.address, logic.address);
+      const proxyAddr = await factory.getAddress(wBCH.address, hUSD.address, logic.address);
+      proxy = await Logic.attach(proxyAddr);
+      proxy.stockDec = 18; //wBCH;
+      proxy.moneyDec = 20; //hUSD;
+
+      await wBCH.approve(proxy.address, 99999n * 10n**18n);
+      await hUSD.approve(proxy.address, 99999n * 10n**20n);
+
+      robotId0 = encodeRobotId(owner.address, 0);
+      robotId1 = encodeRobotId(owner.address, 1);
+
+      const robotInfo0 = packRobotInfo(
+        100n * 10n**18n,
+        500n * 10n**20n,
+        '150.0', 
+        '100.0',
+      );
+      await proxy.createRobot(robotInfo0);
+
+      await wBCH.transfer(taker.address, 200n * 10n**18n);
+      await hUSD.transfer(taker.address, 20000n * 10n**20n);
+
+      expect(await wBCH.balanceOf(proxy.address)).to.be.equal(100n * 10n**18n);
+      expect(await hUSD.balanceOf(proxy.address)).to.be.equal(500n * 10n**20n);
+      expect(await wBCH.balanceOf(taker.address)).to.be.equal(200n * 10n**18n);
+      expect(await hUSD.balanceOf(taker.address)).to.be.equal(20000n * 10n**20n);
+    });
+
+    it("sellToRobot: ok", async function () {
+      await wBCH.connect(taker).approve(proxy.address, 99999n * 10n**18n);
+      await proxy.connect(taker).sellToRobot(robotId0, 1n * 10n**18n);
+
+      expect(await getRobotById(proxy, robotId0)).to.deep.equal({
+        stockAmount: "101.0",
+        moneyAmount: "400.000002393958776832",
+        highPrice: "149.9999942100385792",
+        lowPrice: "99.999997606041223168",
+      });
+
+      expect(ethers.utils.formatUnits(await wBCH.balanceOf(proxy.address), 18)).to.be.equal("101.0");
+      expect(ethers.utils.formatUnits(await hUSD.balanceOf(proxy.address), 20)).to.be.equal("400.000002393958776832");
+      expect(ethers.utils.formatUnits(await wBCH.balanceOf(taker.address), 18)).to.be.equal("199.0");
+      expect(ethers.utils.formatUnits(await hUSD.balanceOf(taker.address), 20)).to.be.equal("20099.999997606041223168");
+    });
+    it("buyFromRobot: ok", async function () {
+      await hUSD.connect(taker).approve(proxy.address, 99999n * 10n**20n);
+      await proxy.connect(taker).buyFromRobot(robotId0, 300n * 10n**20n);
+      expect(await getRobotById(proxy, robotId0)).to.deep.equal({
+        stockAmount: "97.99999992280051141",
+        moneyAmount: "800.0",
+        highPrice: "149.9999942100385792",
+        lowPrice: "99.999997606041223168",
+      });
+
+      expect(ethers.utils.formatUnits(await wBCH.balanceOf(proxy.address), 18)).to.be.equal("97.99999992280051141");
+      expect(ethers.utils.formatUnits(await hUSD.balanceOf(proxy.address), 20)).to.be.equal("800.0");
+      expect(ethers.utils.formatUnits(await wBCH.balanceOf(taker.address), 18)).to.be.equal("202.00000007719948859");
+      expect(ethers.utils.formatUnits(await hUSD.balanceOf(taker.address), 20)).to.be.equal("19700.0");
+    });
+
+  });
+
 });
 
 
