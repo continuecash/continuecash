@@ -16,6 +16,9 @@ contract ContinueCashLogic {
 	address constant private SEP206Contract = address(uint160(0x2711));
 	uint constant private UNIT = 10**18;
 
+	event SellToRobot(address seller, uint robotId, uint stockDelta, uint moneyDelta);
+	event BuyFromRobot(address buyer, uint robotId, uint stockDelta, uint moneyDelta);
+
 	function getAllRobots() view public returns (uint[] memory robotsIdAndInfo) {
 		robotsIdAndInfo = new uint[](robotIdList.length * 2);
 		for(uint i=0; i<robotIdList.length; i++) {
@@ -101,6 +104,7 @@ contract ContinueCashLogic {
 		}
 		robotIdList.pop();
 		uint robotInfo = robotInfoMap[robotId];
+		delete robotInfoMap[robotId];
 		(uint stockAmount, uint moneyAmount, /*uint packedPrice*/) = unpackRobotInfo(robotInfo);
 		address stock = address(uint160(stock_priceDiv>>96));
 		address money = address(uint160(money_priceMul>>96));
@@ -121,6 +125,7 @@ contract ContinueCashLogic {
 		stockAmount += stockDelta;
 		moneyAmount -= moneyDelta;
 		robotInfoMap[robotId] = packRobotInfo(stockAmount, moneyAmount, packedPrice);
+		emit SellToRobot(msg.sender, robotId, stockDelta, moneyDelta);
 	}
 
 	function buyFromRobot(uint robotId, uint moneyDelta) external payable {
@@ -136,6 +141,7 @@ contract ContinueCashLogic {
 		stockAmount -= stockDelta;
 		moneyAmount += moneyDelta;
 		robotInfoMap[robotId] = packRobotInfo(stockAmount, moneyAmount, packedPrice);
+		emit BuyFromRobot(msg.sender, robotId, stockDelta, moneyDelta);
 	}
 }
 
