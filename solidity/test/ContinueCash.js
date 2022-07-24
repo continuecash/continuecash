@@ -165,6 +165,10 @@ describe("ContinueCash", function () {
       await proxy.createRobot(robotInfo3);
 
       expect(await proxy.createdRobotCount()).to.be.equal(4);
+      expect(await proxy.robotInfoMap(robotId0)).to.be.equal(robotInfo0);
+      expect(await proxy.robotInfoMap(robotId1)).to.be.equal(robotInfo1);
+      expect(await proxy.robotInfoMap(robotId2)).to.be.equal(robotInfo2);
+      expect(await proxy.robotInfoMap(robotId3)).to.be.equal(robotInfo3);
       expect(await loadAllRobots(proxy)).to.deep.equal([
         {id: robotId0, info: robotInfo0},
         {id: robotId1, info: robotInfo1},
@@ -173,6 +177,10 @@ describe("ContinueCash", function () {
       ]);
 
       await proxy.deleteRobot(0, robotId0);
+      expect(await proxy.robotInfoMap(robotId0)).to.be.equal(ethers.BigNumber.from(0));
+      expect(await proxy.robotInfoMap(robotId1)).to.be.equal(robotInfo1);
+      expect(await proxy.robotInfoMap(robotId2)).to.be.equal(robotInfo2);
+      expect(await proxy.robotInfoMap(robotId3)).to.be.equal(robotInfo3);
       expect(await loadAllRobots(proxy)).to.deep.equal([
         {id: robotId3, info: robotInfo3},
         {id: robotId1, info: robotInfo1},
@@ -180,19 +188,34 @@ describe("ContinueCash", function () {
       ]);
 
       await proxy.deleteRobot(1, robotId1);
+      expect(await proxy.robotInfoMap(robotId0)).to.be.equal(ethers.BigNumber.from(0));
+      expect(await proxy.robotInfoMap(robotId1)).to.be.equal(ethers.BigNumber.from(0));
+      expect(await proxy.robotInfoMap(robotId2)).to.be.equal(robotInfo2);
+      expect(await proxy.robotInfoMap(robotId3)).to.be.equal(robotInfo3);
       expect(await loadAllRobots(proxy)).to.deep.equal([
         {id: robotId3, info: robotInfo3},
         {id: robotId2, info: robotInfo2},
       ]);
 
       await proxy.deleteRobot(1, robotId2);
+      expect(await proxy.robotInfoMap(robotId0)).to.be.equal(ethers.BigNumber.from(0));
+      expect(await proxy.robotInfoMap(robotId1)).to.be.equal(ethers.BigNumber.from(0));
+      expect(await proxy.robotInfoMap(robotId2)).to.be.equal(ethers.BigNumber.from(0));
+      expect(await proxy.robotInfoMap(robotId3)).to.be.equal(robotInfo3);
       expect(await loadAllRobots(proxy)).to.deep.equal([
         {id: robotId3, info: robotInfo3},
       ]);
 
       await proxy.deleteRobot(0, robotId3);
+      expect(await proxy.robotInfoMap(robotId0)).to.be.equal(ethers.BigNumber.from(0));
+      expect(await proxy.robotInfoMap(robotId1)).to.be.equal(ethers.BigNumber.from(0));
+      expect(await proxy.robotInfoMap(robotId2)).to.be.equal(ethers.BigNumber.from(0));
+      expect(await proxy.robotInfoMap(robotId3)).to.be.equal(ethers.BigNumber.from(0));
       expect(await loadAllRobots(proxy)).to.deep.equal([
       ]);
+
+      await expect(proxy.sellToRobot(robotId1, 123)).to.be.revertedWith("robot-not-found");
+      await expect(proxy.buyFromRobot(robotId3, 123)).to.be.revertedWith("robot-not-found");
     });
 
   });
@@ -272,7 +295,11 @@ describe("ContinueCash", function () {
 
     it("sellToRobot: ok", async function () {
       await wBCH.connect(taker).approve(proxy.address, 99999n * 10n**18n);
-      await proxy.connect(taker).sellToRobot(robotId0, 1n * 10n**18n);
+      await expect(proxy.connect(taker).sellToRobot(robotId0, 1n * 10n**18n))
+        .to.emit(proxy, "SellToRobot")
+        .withArgs(taker.address, robotId0,
+            ethers.utils.parseUnits("1", 18), 
+            ethers.utils.parseUnits("99.9999976", 8));
 
       expect(await getRobotById(proxy, robotId0)).to.deep.equal({
         stockAmount: "101.0",
@@ -288,7 +315,12 @@ describe("ContinueCash", function () {
     });
     it("buyFromRobot: ok", async function () {
       await fUSD.connect(taker).approve(proxy.address, 99999n * 10n**8n);
-      await proxy.connect(taker).buyFromRobot(robotId0, 300n * 10n**8n);
+      await expect(proxy.connect(taker).buyFromRobot(robotId0, 300n * 10n**8n))
+        .to.emit(proxy, "BuyFromRobot")
+        .withArgs(taker.address, robotId0,
+            ethers.utils.parseUnits("2.00000007719948859", 18),
+            ethers.utils.parseUnits("300", 8));
+
       expect(await getRobotById(proxy, robotId0)).to.deep.equal({
         stockAmount: "97.99999992280051141",
         moneyAmount: "800.0",
