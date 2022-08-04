@@ -4,3 +4,4 @@
 *.sol~
 *.swp
 .DS_Store
+*.js~
