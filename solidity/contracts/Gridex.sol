@@ -5,10 +5,10 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 // import "hardhat/console.sol";
 
-// Gridex can support the price range from 1/(2**32) to 2**32. The prices within this range is divided to 6400 grids, and 
-// the ratio between a pair of adjacent prices is alpha=2**0.01=1.0069555500567189
+// Gridex can support the price range from 1/(2**32) to 2**32. The prices within this range is divided to 16384 grids, and 
+// the ratio between a pair of adjacent prices is alpha=2**(1/256.)=1.0027112750502025
 // A bancor-style market-making pool can be created between a pair of adjacent prices, i.e. priceHi and priceLo.
-// Theoretically, there are be 6399 pools. But in pratice, only a few pools with reasonable prices exist.
+// Theoretically, there are be 16383 pools. But in pratice, only a few pools with reasonable prices exist.
 //
 //                    * priceHi
 //                   /|
@@ -52,6 +52,13 @@ contract GridexLogic {
 		uint64 soldRatio;
 	}
 
+	struct PoolWithMyShares {
+		uint96 totalShares;
+		uint96 totalStock;
+		uint64 soldRatio;
+		uint96 myShares;
+	}
+
 	struct Params {
 		address stock;
 		address money;
@@ -60,42 +67,61 @@ contract GridexLogic {
 	}
 
 	address constant private SEP206Contract = address(uint160(0x2711));
-	uint constant GridCount = 6400;
-	uint constant MaskWordCount = GridCount/256;
+	uint constant GridCount = 64*256;
+	uint constant MaskWordCount = 64;
 	uint constant private RatioBase = 10**19; // need 64 bits
-	uint constant private PriceBase = 2**64;
-	// alpha = 1.0069555500567189 = 2**0.01;   alpha**100 = 2  2**24=16777216
-	// for i in range(10): print((2**24)*(alpha**i))
-	uint constant X = (uint(16777216)<<(0*25))| //alpha*0
-	                  (uint(16893910)<<(1*25))| //alpha*1
-	                  (uint(17011417)<<(2*25))| //alpha*2
-	                  (uint(17129740)<<(3*25))| //alpha*3
-	                  (uint(17248887)<<(4*25))| //alpha*4
-	                  (uint(17368863)<<(5*25))| //alpha*5
-	                  (uint(17489673)<<(6*25))| //alpha*6
-	                  (uint(17611323)<<(7*25))| //alpha*7
-	                  (uint(17733819)<<(8*25))| //alpha*8
-	                  (uint(17857168)<<(9*25)); //alpha*9
+	uint constant private PriceBase = 2**68;
+	uint constant MASK16 = (1<<16)-1;
+	uint constant Fee = 5;
+	uint constant FeeBase = 10000;
 
-	// for i in range(10): print((2**24)*(alpha**(i*10)))
-	uint constant Y = (uint(16777216)<<(0*25))| //alpha*0
-	                  (uint(17981375)<<(1*25))| //alpha*10
-	                  (uint(19271960)<<(2*25))| //alpha*20
-	                  (uint(20655176)<<(3*25))| //alpha*30
-	                  (uint(22137669)<<(4*25))| //alpha*40
-	                  (uint(23726566)<<(5*25))| //alpha*50
-	                  (uint(25429504)<<(6*25))| //alpha*60
-	                  (uint(27254668)<<(7*25))| //alpha*70
-	                  (uint(29210830)<<(8*25))| //alpha*80
-	                  (uint(31307392)<<(9*25)); //alpha*90
-
-	uint constant MASK25 = (1<<25)-1;
-	uint constant Fee = 3;
-	uint constant FeeBase = 1000;
-
-	mapping(address => uint128[GridCount]) public userShareMap;
+	mapping(address => uint96[GridCount]) public userShareMap;
 	Pool[GridCount] public pools;
 	uint[MaskWordCount] private maskWords;
+
+	// alpha = 1.0027112750502025 = 2**(1/256.);   alpha**256 = 2  2**16=65536
+	// for i in range(16): print(round((2**20)*(alpha**i)))
+	uint constant X = (uint(1048576-1048576)<< 0)| //alpha*0
+                          (uint(1051419-1048576)<< 1)| //alpha*1
+                          (uint(1054270-1048576)<< 2)| //alpha*2
+                          (uint(1057128-1048576)<< 3)| //alpha*3
+                          (uint(1059994-1048576)<< 4)| //alpha*4
+                          (uint(1062868-1048576)<< 5)| //alpha*5
+                          (uint(1065750-1048576)<< 6)| //alpha*6
+                          (uint(1068639-1048576)<< 7)| //alpha*7
+                          (uint(1071537-1048576)<< 8)| //alpha*8
+                          (uint(1074442-1048576)<< 9)| //alpha*9
+                          (uint(1077355-1048576)<<10)| //alpha*10
+                          (uint(1080276-1048576)<<11)| //alpha*11
+                          (uint(1083205-1048576)<<12)| //alpha*12
+                          (uint(1086142-1048576)<<13)| //alpha*13
+                          (uint(1089087-1048576)<<14)| //alpha*14
+                          (uint(1092040-1048576)<<15); //alpha*15
+
+	// for i in range(16): print(round((2**16)*(alpha**(i*16))))
+	uint constant Y = (uint(65536 -65536)<<( 0*16))| //alpha*0*16
+                          (uint(68438 -65536)<<( 1*16))| //alpha*1*16
+                          (uint(71468 -65536)<<( 2*16))| //alpha*2*16
+                          (uint(74632 -65536)<<( 3*16))| //alpha*3*16
+                          (uint(77936 -65536)<<( 4*16))| //alpha*4*16
+                          (uint(81386 -65536)<<( 5*16))| //alpha*5*16
+                          (uint(84990 -65536)<<( 6*16))| //alpha*6*16
+                          (uint(88752 -65536)<<( 7*16))| //alpha*7*16
+                          (uint(92682 -65536)<<( 8*16))| //alpha*8*16
+                          (uint(96785 -65536)<<( 9*16))| //alpha*9*16
+                          (uint(101070-65536)<<(10*16))| //alpha*10*16
+                          (uint(105545-65536)<<(11*16))| //alpha*11*16
+                          (uint(110218-65536)<<(12*16))| //alpha*12*16
+                          (uint(115098-65536)<<(13*16))| //alpha*13*16
+                          (uint(120194-65536)<<(14*16))| //alpha*14*16
+                          (uint(125515-65536)<<(15*16)); //alpha*15*16
+
+	function getPrice(uint grid) internal pure returns (uint) {
+		require(grid < GridCount, "invalid-grid");
+		(uint head, uint tail) = (grid/256, grid%256);
+		uint beforeShift = (2**20+((X>>((tail%16)*16))&MASK16)) * (2**16+((Y>>(tail/16)*16)&MASK16));
+		return beforeShift<<head;
+	}
 
 	function getMaskWords() view external returns (uint[MaskWordCount] memory masks) {
 		for(uint i=0; i < masks.length; i++) {
@@ -103,26 +129,22 @@ contract GridexLogic {
 		}
 	}
 
-	function getPools(uint start, uint end) view external returns (Pool[] memory poolList) {
-		poolList = new Pool[](end-start);
+	function getPoolAndMyShares(uint start, uint end) view external returns (PoolWithMyShares[] memory arr) {
+		arr = new PoolWithMyShares[](end-start);
+		uint96[GridCount] storage myShareArr = userShareMap[msg.sender];
 		for(uint i=start; i<end; i++) {
-			poolList[i-start] = pools[i];
+			Pool memory pool = pools[i];
+			uint j = i-start;
+			arr[j].totalShares = pool.totalShares;
+			arr[j].totalStock = pool.totalStock;
+			arr[j].soldRatio = pool.soldRatio;
+			arr[j].myShares = myShareArr[i];
 		}
 	}
 
 	function loadParams() view public returns (Params memory params) {
 		(params.stock, params.priceDiv) = (address(uint160(stock_priceDiv>>96)), uint96(stock_priceDiv));
 		(params.money, params.priceMul) = (address(uint160(money_priceMul>>96)), uint96(money_priceMul));
-	}
-
-	function getPrice(uint grid) internal pure returns (uint) {
-		require(grid < GridCount, "invalid-grid");
-		(uint head, uint tail) = (grid/100, grid%100);
-		uint beforeShift = ((Y>>((tail/10)*25))&MASK25) * ((X>>(tail%10)*25)&MASK25);
-		if(head>=18) {
-			return beforeShift<<(head-18);
-		}
-		return beforeShift>>(18-head);
 	}
 
 	function safeTransfer(address coinType, address receiver, uint amount) internal {
@@ -193,12 +215,12 @@ contract GridexLogic {
 		if(sharesDelta>0) {
 			pool.totalStock += uint96(uint(pool.totalStock)*uint(int(sharesDelta))/uint(pool.totalShares));
 			pool.totalShares += uint96(sharesDelta);
-			userShareMap[msg.sender][grid] += uint128(uint96(sharesDelta));
+			userShareMap[msg.sender][grid] += uint96(sharesDelta);
 			pools[grid] = pool;
 		} else {
 			pool.totalStock -= uint96(uint(pool.totalStock)*uint(int(-sharesDelta))/uint(pool.totalShares));
 			pool.totalShares -= uint96(-sharesDelta);
-			userShareMap[msg.sender][grid] -= uint128(uint96(-sharesDelta));
+			userShareMap[msg.sender][grid] -= uint96(-sharesDelta);
 			pools[grid] = pool;
 		}
 		uint leftStockNew;
@@ -319,3 +341,67 @@ contract GridexLogic {
 	}
 }
 
+contract GridexProxy {
+	uint public stock_priceDiv;
+	uint public money_priceMul;
+	uint immutable public implAddr;
+	
+	constructor(uint _stock_priceDiv, uint _money_priceMul, address _impl) {
+		stock_priceDiv = _stock_priceDiv;
+		money_priceMul = _money_priceMul;
+		implAddr = uint(uint160(_impl));
+	}
+	
+	receive() external payable {
+		require(false);
+	}
+
+	fallback() external payable {
+		uint impl=implAddr;
+		assembly {
+			let ptr := mload(0x40)
+			calldatacopy(ptr, 0, calldatasize())
+			let result := delegatecall(gas(), impl, ptr, calldatasize(), 0, 0)
+			let size := returndatasize()
+			returndatacopy(ptr, 0, size)
+			switch result
+			case 0 { revert(ptr, size) }
+			default { return(ptr, size) }
+		}
+	}
+}
+
+contract GridexFactory {
+	address constant SEP206Contract = address(uint160(0x2711));
+
+	event Created(address indexed stock, address indexed money, address indexed impl, address pairAddr);
+
+	function getAddress(address stock, address money, address impl) public view returns (address) {
+		bytes memory bytecode = type(GridexProxy).creationCode;
+		(uint stock_priceDiv, uint money_priceMul) = getParams(stock, money);
+		bytes32 codeHash = keccak256(abi.encodePacked(bytecode, abi.encode(
+			stock_priceDiv, money_priceMul, impl)));
+		bytes32 hash = keccak256(abi.encodePacked(bytes1(0xff), address(this), bytes32(0), codeHash));
+		return address(uint160(uint(hash)));
+	}
+
+	function getParams(address stock, address money) private view returns (uint stock_priceDiv, uint money_priceMul) {
+		uint stockDecimals = stock == SEP206Contract ? 18 : IERC20Metadata(stock).decimals();
+		uint moneyDecimals = money == SEP206Contract ? 18 : IERC20Metadata(money).decimals();
+		uint priceMul = 1;
+		uint priceDiv = 1;
+		if(moneyDecimals >= stockDecimals) {
+			priceMul = (10**(moneyDecimals - stockDecimals));
+		} else {
+			priceDiv = (10**(stockDecimals - moneyDecimals));
+		}
+		stock_priceDiv = (uint(uint160(stock))<<96)|priceDiv;
+		money_priceMul = (uint(uint160(money))<<96)|priceMul;
+	}
+
+	function create(address stock, address money, address impl) external {
+		(uint stock_priceDiv, uint money_priceMul) = getParams(stock, money);
+		address pairAddr = address(new GridexProxy{salt: 0}(stock_priceDiv, money_priceMul, impl));
+		emit Created(stock, money, impl, pairAddr);
+	}
+}
