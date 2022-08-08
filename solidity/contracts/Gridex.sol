@@ -202,13 +202,13 @@ abstract contract GridexLogicAbstract {
 		}
 	}
 
-	function buyFromPools(uint grid, uint stockToBuy, uint maxAveragePrice) public payable 
+	function buyFromPools(uint grid, uint stockToBuy, uint maxAveragePrice_stopGrid) public payable 
 								returns (uint totalPaidMoney, uint totalGotStock) {
 		Params memory params = loadParams();
 		(totalPaidMoney, totalGotStock) = (0, 0);
 		uint priceHi = getPrice(grid);
 		uint fee_ = fee();
-		for(; stockToBuy != 0; grid++) {
+		for(; stockToBuy != 0 && grid < uint16(maxAveragePrice_stopGrid); grid++) {
 			uint priceLo = priceHi;
 			priceHi = getPrice(grid+1);
 			Pool memory pool = pools[grid];
@@ -247,18 +247,18 @@ abstract contract GridexLogicAbstract {
 			}
 			pools[grid] = pool;
 		}
-		require(totalPaidMoney*PriceBase <= totalGotStock*maxAveragePrice, "price-too-high");
+		require(totalPaidMoney*PriceBase <= totalGotStock*(maxAveragePrice_stopGrid>>16), "price-too-high");
 		safeReceive(params.money, totalPaidMoney, params.money != SEP206Contract);
 		safeTransfer(params.stock, msg.sender, totalGotStock);
 	}
 
-	function sellToPools(uint grid, uint stockToSell, uint minAveragePrice) public payable 
+	function sellToPools(uint grid, uint stockToSell, uint minAveragePrice_stopGrid) public payable 
 								returns (uint totalGotMoney, uint totalSoldStock) {
 		Params memory params = loadParams();
 		(totalGotMoney, totalSoldStock) = (0, 0);
 		uint priceLo = getPrice(grid);
 		uint fee_ = fee();
-		for(; stockToSell != 0; grid--) {
+		for(; stockToSell != 0 && grid>uint16(minAveragePrice_stopGrid); grid--) {
 			uint priceHi = priceLo;
 			priceLo = getPrice(grid-1);
 			Pool memory pool = pools[grid];
@@ -296,7 +296,7 @@ abstract contract GridexLogicAbstract {
 			} // to avoid "Stack too deep"
 			pools[grid] = pool;
 		}
-		require(totalSoldStock*minAveragePrice <= totalGotMoney*PriceBase, "price-too-low");
+		require(totalSoldStock*(minAveragePrice_stopGrid>>16) <= totalGotMoney*PriceBase, "price-too-low");
 		safeReceive(params.stock, totalSoldStock, params.stock != SEP206Contract);
 		safeTransfer(params.money, msg.sender, totalGotMoney);
 	}
