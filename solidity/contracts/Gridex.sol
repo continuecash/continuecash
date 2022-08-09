@@ -18,7 +18,7 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 //               /    |       sold stock: the stock amount that has been sold out (the a-b line)
 //         price*     |       left stock: the stock amount that has NOT been sold out (the b-c line)
 //             /|     |       total stock: sum of the sold stock and the left stock (the a-c line)
-//            /=|     |       got money: the money mount got by selling stock (the left trapezoid area)
+//            /=|     |       got money: the money amount got by selling stock (the left trapezoid area)
 //           /==|     |                  got money = soldStock*(price+priceLo)/2
 //          /===|     |       sold ratio = sold stock / total stock
 //         /====|     |
@@ -310,25 +310,25 @@ abstract contract GridexLogicAbstract {
 contract GridexLogic256 is GridexLogicAbstract {
 	// alpha = 1.0027112750502025 = Math.pow(2, 1/256.);   Math.pow(alpha, 256) = 2  2**16=65536
 	// for(var i=0; i<16; i++) {console.log(Math.round( Math.pow(2, 20) * Math.pow(alpha, i)))}
-	uint constant X = (uint(1048576-1048576)<< 0)| // extractNthU16(X, 0)==Math.pow(2,20)*(Math.pow(alpha,0) -1)
-                          (uint(1051419-1048576)<< 1)| // extractNthU16(X, 1)==Math.pow(2,20)*(Math.pow(alpha,1) -1)
-                          (uint(1054270-1048576)<< 2)| // extractNthU16(X, 2)==Math.pow(2,20)*(Math.pow(alpha,2) -1)
-                          (uint(1057128-1048576)<< 3)| // extractNthU16(X, 3)==Math.pow(2,20)*(Math.pow(alpha,3) -1)
-                          (uint(1059994-1048576)<< 4)| // extractNthU16(X, 4)==Math.pow(2,20)*(Math.pow(alpha,4) -1)
-                          (uint(1062868-1048576)<< 5)| // extractNthU16(X, 5)==Math.pow(2,20)*(Math.pow(alpha,5) -1)
-                          (uint(1065750-1048576)<< 6)| // extractNthU16(X, 6)==Math.pow(2,20)*(Math.pow(alpha,6) -1)
-                          (uint(1068639-1048576)<< 7)| // extractNthU16(X, 7)==Math.pow(2,20)*(Math.pow(alpha,7) -1)
-                          (uint(1071537-1048576)<< 8)| // extractNthU16(X, 8)==Math.pow(2,20)*(Math.pow(alpha,8) -1)
-                          (uint(1074442-1048576)<< 9)| // extractNthU16(X, 9)==Math.pow(2,20)*(Math.pow(alpha,9) -1)
-                          (uint(1077355-1048576)<<10)| // extractNthU16(X,10)==Math.pow(2,20)*(Math.pow(alpha,10)-1)
-                          (uint(1080276-1048576)<<11)| // extractNthU16(X,11)==Math.pow(2,20)*(Math.pow(alpha,11)-1)
-                          (uint(1083205-1048576)<<12)| // extractNthU16(X,12)==Math.pow(2,20)*(Math.pow(alpha,12)-1)
-                          (uint(1086142-1048576)<<13)| // extractNthU16(X,13)==Math.pow(2,20)*(Math.pow(alpha,13)-1)
-                          (uint(1089087-1048576)<<14)| // extractNthU16(X,14)==Math.pow(2,20)*(Math.pow(alpha,14)-1)
-                          (uint(1092040-1048576)<<15); // extractNthU16(X,15)==Math.pow(2,20)*(Math.pow(alpha,15)-1)
+	uint constant X     = (uint(1048576-1048576)<< 0*16)| // extractNthU16(X, 0)==Math.pow(2,20)*(Math.pow(alpha,0) -1)
+                          (uint(1051419-1048576)<< 1*16)| // extractNthU16(X, 1)==Math.pow(2,20)*(Math.pow(alpha,1) -1)
+                          (uint(1054270-1048576)<< 2*16)| // extractNthU16(X, 2)==Math.pow(2,20)*(Math.pow(alpha,2) -1)
+                          (uint(1057128-1048576)<< 3*16)| // extractNthU16(X, 3)==Math.pow(2,20)*(Math.pow(alpha,3) -1)
+                          (uint(1059994-1048576)<< 4*16)| // extractNthU16(X, 4)==Math.pow(2,20)*(Math.pow(alpha,4) -1)
+                          (uint(1062868-1048576)<< 5*16)| // extractNthU16(X, 5)==Math.pow(2,20)*(Math.pow(alpha,5) -1)
+                          (uint(1065750-1048576)<< 6*16)| // extractNthU16(X, 6)==Math.pow(2,20)*(Math.pow(alpha,6) -1)
+                          (uint(1068639-1048576)<< 7*16)| // extractNthU16(X, 7)==Math.pow(2,20)*(Math.pow(alpha,7) -1)
+                          (uint(1071537-1048576)<< 8*16)| // extractNthU16(X, 8)==Math.pow(2,20)*(Math.pow(alpha,8) -1)
+                          (uint(1074442-1048576)<< 9*16)| // extractNthU16(X, 9)==Math.pow(2,20)*(Math.pow(alpha,9) -1)
+                          (uint(1077355-1048576)<<10*16)| // extractNthU16(X,10)==Math.pow(2,20)*(Math.pow(alpha,10)-1)
+                          (uint(1080276-1048576)<<11*16)| // extractNthU16(X,11)==Math.pow(2,20)*(Math.pow(alpha,11)-1)
+                          (uint(1083205-1048576)<<12*16)| // extractNthU16(X,12)==Math.pow(2,20)*(Math.pow(alpha,12)-1)
+                          (uint(1086142-1048576)<<13*16)| // extractNthU16(X,13)==Math.pow(2,20)*(Math.pow(alpha,13)-1)
+                          (uint(1089087-1048576)<<14*16)| // extractNthU16(X,14)==Math.pow(2,20)*(Math.pow(alpha,14)-1)
+                          (uint(1092040-1048576)<<15*16); // extractNthU16(X,15)==Math.pow(2,20)*(Math.pow(alpha,15)-1)
 
 	// for(var i=0; i<16; i++) {console.log(Math.round( Math.pow(2,16) * Math.pow(alpha, i*16)))}
-	uint constant Y = (uint(65536 -65536)<<( 0*16))| //extractNthU16(Y, 0)==Math.pow(2,16)*(Math.pow(alpha,16*0) -1) 
+	uint constant Y     = (uint(65536 -65536)<<( 0*16))| //extractNthU16(Y, 0)==Math.pow(2,16)*(Math.pow(alpha,16*0) -1) 
                           (uint(68438 -65536)<<( 1*16))| //extractNthU16(Y, 1)==Math.pow(2,16)*(Math.pow(alpha,16*1) -1) 
                           (uint(71468 -65536)<<( 2*16))| //extractNthU16(Y, 2)==Math.pow(2,16)*(Math.pow(alpha,16*2) -1) 
                           (uint(74632 -65536)<<( 3*16))| //extractNthU16(Y, 3)==Math.pow(2,16)*(Math.pow(alpha,16*3) -1) 
@@ -369,24 +369,24 @@ contract GridexLogic256 is GridexLogicAbstract {
 contract GridexLogic64 is GridexLogicAbstract {
 	// alpha = 1.0027112750502025 = Math.pow(2, 1/64.);   Math.pow(alpha, 64) = 2  2**19=524288
 	// for(var i=0; i<8; i++) {console.log(Math.round( Math.pow(2, 19) * Math.pow(alpha, i)))}
-	uint constant X = (uint(524288-524288)<< 0)| // extractNthU16(X, 0)==Math.pow(2,19)*(Math.pow(alpha,0) -1)
-                          (uint(529997-524288)<< 1)| // extractNthU16(X, 1)==Math.pow(2,19)*(Math.pow(alpha,1) -1)
-                          (uint(535768-524288)<< 2)| // extractNthU16(X, 2)==Math.pow(2,19)*(Math.pow(alpha,2) -1)
-                          (uint(541603-524288)<< 3)| // extractNthU16(X, 3)==Math.pow(2,19)*(Math.pow(alpha,3) -1)
-                          (uint(547500-524288)<< 4)| // extractNthU16(X, 4)==Math.pow(2,19)*(Math.pow(alpha,4) -1)
-                          (uint(553462-524288)<< 5)| // extractNthU16(X, 5)==Math.pow(2,19)*(Math.pow(alpha,5) -1)
-                          (uint(559489-524288)<< 6)| // extractNthU16(X, 6)==Math.pow(2,19)*(Math.pow(alpha,6) -1)
-                          (uint(565581-524288)<< 7); // extractNthU16(X, 7)==Math.pow(2,19)*(Math.pow(alpha,7) -1)
+	uint constant X =     (uint(524288-524288)<< 0*16)| // extractNthU16(X, 0)==Math.pow(2,19)*(Math.pow(alpha,0) -1)
+                          (uint(529997-524288)<< 1*16)| // extractNthU16(X, 1)==Math.pow(2,19)*(Math.pow(alpha,1) -1)
+                          (uint(535768-524288)<< 2*16)| // extractNthU16(X, 2)==Math.pow(2,19)*(Math.pow(alpha,2) -1)
+                          (uint(541603-524288)<< 3*16)| // extractNthU16(X, 3)==Math.pow(2,19)*(Math.pow(alpha,3) -1)
+                          (uint(547500-524288)<< 4*16)| // extractNthU16(X, 4)==Math.pow(2,19)*(Math.pow(alpha,4) -1)
+                          (uint(553462-524288)<< 5*16)| // extractNthU16(X, 5)==Math.pow(2,19)*(Math.pow(alpha,5) -1)
+                          (uint(559489-524288)<< 6*16)| // extractNthU16(X, 6)==Math.pow(2,19)*(Math.pow(alpha,6) -1)
+                          (uint(565581-524288)<< 7*16); // extractNthU16(X, 7)==Math.pow(2,19)*(Math.pow(alpha,7) -1)
 
 	// for(var i=0; i<8; i++) {console.log(Math.round( Math.pow(2,16) * Math.pow(alpha, i*8)))}
-	uint constant Y = (uint(65536 -65536)<< 0)| // extractNthU16(Y, 0)==Math.pow(2,16)*(Math.pow(alpha,8*0) -1)
-                          (uint(71468 -65536)<< 1)| // extractNthU16(Y, 1)==Math.pow(2,16)*(Math.pow(alpha,8*1) -1)
-                          (uint(77936 -65536)<< 2)| // extractNthU16(Y, 2)==Math.pow(2,16)*(Math.pow(alpha,8*2) -1)
-                          (uint(84990 -65536)<< 3)| // extractNthU16(Y, 3)==Math.pow(2,16)*(Math.pow(alpha,8*3) -1)
-                          (uint(92682 -65536)<< 4)| // extractNthU16(Y, 4)==Math.pow(2,16)*(Math.pow(alpha,8*4) -1)
-                          (uint(101070-65536)<< 5)| // extractNthU16(Y, 5)==Math.pow(2,16)*(Math.pow(alpha,8*5) -1)
-                          (uint(110218-65536)<< 6)| // extractNthU16(Y, 6)==Math.pow(2,16)*(Math.pow(alpha,8*6) -1)
-                          (uint(120194-65536)<< 7); // extractNthU16(Y, 7)==Math.pow(2,16)*(Math.pow(alpha,8*7) -1)
+	uint constant Y =     (uint(65536 -65536)<< 0*16)| // extractNthU16(Y, 0)==Math.pow(2,16)*(Math.pow(alpha,8*0) -1)
+                          (uint(71468 -65536)<< 1*16)| // extractNthU16(Y, 1)==Math.pow(2,16)*(Math.pow(alpha,8*1) -1)
+                          (uint(77936 -65536)<< 2*16)| // extractNthU16(Y, 2)==Math.pow(2,16)*(Math.pow(alpha,8*2) -1)
+                          (uint(84990 -65536)<< 3*16)| // extractNthU16(Y, 3)==Math.pow(2,16)*(Math.pow(alpha,8*3) -1)
+                          (uint(92682 -65536)<< 4*16)| // extractNthU16(Y, 4)==Math.pow(2,16)*(Math.pow(alpha,8*4) -1)
+                          (uint(101070-65536)<< 5*16)| // extractNthU16(Y, 5)==Math.pow(2,16)*(Math.pow(alpha,8*5) -1)
+                          (uint(110218-65536)<< 6*16)| // extractNthU16(Y, 6)==Math.pow(2,16)*(Math.pow(alpha,8*6) -1)
+                          (uint(120194-65536)<< 7*16); // extractNthU16(Y, 7)==Math.pow(2,16)*(Math.pow(alpha,8*7) -1)
 
 	function getPrice(uint grid) internal pure override returns (uint) {
 		require(grid < GridCount, "invalid-grid");
