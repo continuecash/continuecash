@@ -350,7 +350,7 @@ contract GridexLogic256 is GridexLogicAbstract {
 		(uint head, uint tail) = (grid/256, grid%256);
 		uint x = extractNthU16(X, tail%16);
 		uint y = extractNthU16(Y, tail/16);
-		uint beforeShift = ((1<<16)+x) * ((1<<20)+y); // = Math.pow(alpha, tail) * Math.pow(2, 36)
+		uint beforeShift = ((1<<20)+x) * ((1<<16)+y); // = Math.pow(alpha, tail) * Math.pow(2, 36)
 		return beforeShift<<head;
 	}
 
@@ -393,7 +393,7 @@ contract GridexLogic64 is GridexLogicAbstract {
 		(uint head, uint tail) = (grid/64, grid%64);
 		uint x = extractNthU16(X, tail%8);
 		uint y = extractNthU16(Y, tail/8);
-		uint beforeShift = ((1<<16)+x) * ((1<<19)+y); // = Math.pow(alpha, tail) * Math.pow(2, 35)
+		uint beforeShift = ((1<<19)+x) * ((1<<16)+y); // = Math.pow(alpha, tail) * Math.pow(2, 35)
 		return beforeShift<<head;
 	}
 
