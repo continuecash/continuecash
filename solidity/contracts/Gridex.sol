@@ -367,7 +367,7 @@ contract GridexLogic256 is GridexLogicAbstract {
 }
 
 contract GridexLogic64 is GridexLogicAbstract {
-	// alpha = 1.0027112750502025 = Math.pow(2, 1/64.);   Math.pow(alpha, 64) = 2  2**19=524288
+	// alpha = 1.0108892860517005 = Math.pow(2, 1/64.);   Math.pow(alpha, 64) = 2  2**19=524288
 	// for(var i=0; i<8; i++) {console.log(Math.round( Math.pow(2, 19) * Math.pow(alpha, i)))}
 	uint constant X =     (uint(524288-524288)<< 0*16)| // extractNthU16(X, 0)==Math.pow(2,19)*(Math.pow(alpha,0) -1)
                           (uint(529997-524288)<< 1*16)| // extractNthU16(X, 1)==Math.pow(2,19)*(Math.pow(alpha,1) -1)
